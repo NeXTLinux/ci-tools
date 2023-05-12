@@ -1,0 +1,45 @@
+version: '1.0'
+steps:
+  build_docker_image:
+    title: Building Docker Image
+    type: build
+    image_name: ${{IMAGE_NAME}}
+    tag: ci
+    working_directory: ./
+    dockerfile: Dockerfile
+
+  nextlinux_scan:
+    type: composition
+    title: Scanning with Nextlinux Engine
+    composition:
+      version: '2'
+      services:
+        nextlinux-engine:
+          image: nextlinux/inline-scan:latest
+          ports:
+            - 8228
+          command: bash -c 'docker-entrypoint.sh start &> /dev/null'
+    composition_candidates:
+      scan_image:
+        image: nextlinux/inline-scan:latest
+        links:
+          - nextlinux-engine
+        environment:
+          - NEXTLINUX_CLI_URL=http://nextlinux-engine:8228/v1/
+          - IMAGE_NAME=${{IMAGE_NAME}}
+          - IMAGE_TAG=${{IMAGE_TAG}}
+          - DOCKER_USER=${{DOCKER_USER}}
+          - DOCKER_PASS=${{DOCKER_PASS}}
+        command: bash -xc 'nextlinux-cli system wait && nextlinux-cli registry add r.cfcr.io $DOCKER_USER $DOCKER_PASS --skip-validate && nextlinux_ci_tools.py -a --timeout 500 --image r.cfcr.io/nextlinux/${IMAGE_NAME}:ci'
+    composition_variables:
+      - IMAGE_NAME=${{IMAGE_NAME}}
+      - IMAGE_TAG=${{IMAGE_TAG}}
+      - DOCKER_USER=${{DOCKER_USER}}
+      - DOCKER_PASS=${{DOCKER_PASS}}
+
+  push_to_registry:
+    title: Pushing to Docker Registry 
+    type: push
+    candidate: '${{build_docker_image}}'
+    tag: ${{IMAGE_TAG}}
+    registry: dockerhub

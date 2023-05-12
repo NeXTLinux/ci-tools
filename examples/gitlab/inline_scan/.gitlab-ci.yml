@@ -1,0 +1,80 @@
+variables:
+  IMAGE_NAME: ${CI_REGISTRY_IMAGE}/build:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+
+stages:
+- build
+- scan
+- publish
+
+container_build:
+  stage: build
+  image: docker:stable
+  services:
+  - docker:stable-dind
+
+  variables:
+    DOCKER_DRIVER: overlay2
+
+  script:
+  - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
+  - docker build -t "$IMAGE_NAME" .
+  - apk add bash curl 
+  - curl -s https://ci-tools.nextlinux.io/inline_scan-v0.3.3 | bash -s -- -r -t 500 "$IMAGE_NAME"
+  - docker push "$IMAGE_NAME"
+  - |
+      echo "Parsing nextlinux reports."
+      apk add jq
+      bash <<'EOF'
+      for f in nextlinux-reports/*; do
+        if [[ "$f" =~ "content-os" ]]; then
+          printf "\n%s\n" "The following OS packages are installed on ${IMAGE_NAME}:"
+          jq '[.content | sort_by(.package) | .[] | {package: .package, version: .version}]' $f || true
+        fi
+        if [[ "$f" =~ "vuln" ]]; then
+          printf "\n%s\n" "The following vulnerabilities were found on ${IMAGE_NAME}:"
+          jq '[.vulnerabilities | group_by(.package) | .[] | {package: .[0].package, vuln: [.[].vuln]}]' $f || true
+        fi
+      done
+      EOF
+
+  artifacts:
+    name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}
+    paths:
+    - nextlinux-reports/*
+
+container_scan_service:
+  stage: scan
+  variables:
+    NEXTLINUX_CLI_URL: "http://nextlinux-engine:8228/v1"
+    GIT_STRATEGY: none
+  image: docker.io/nextlinux/inline-scan:latest
+  services:
+  - name: docker.io/nextlinux/inline-scan:latest
+    alias: nextlinux-engine
+    command: ["start"]
+  
+  script:
+  - nextlinux-cli system wait
+  - nextlinux-cli registry add "$CI_REGISTRY" gitlab-ci-token "$CI_JOB_TOKEN" --skip-validate 
+  - nextlinux_ci_tools.py -a -r --timeout 500 --image $IMAGE_NAME
+
+  artifacts:
+    name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}
+    paths:
+    - nextlinux-reports/*
+
+container_publish:
+  stage: publish
+  image: docker:stable
+  services:
+  - docker:stable-dind
+
+  variables:
+    DOCKER_DRIVER: overlay2
+    GIT_STRATEGY: none
+
+  script:
+  - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
+  - docker pull "$IMAGE_NAME"
+  - docker tag "$IMAGE_NAME" "${CI_REGISTRY_IMAGE}:latest"
+  - docker push "${CI_REGISTRY_IMAGE}:latest"
