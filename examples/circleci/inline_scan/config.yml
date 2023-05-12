@@ -16,7 +16,7 @@ jobs:
         name: Scan image
         command: |
           apk add curl bash
-          curl -s https://ci-tools.nextlinux.io/inline_scan-v0.3.3 | bash -s -- -r "${IMAGE_NAME}:ci"
+          curl -s https://ci-tools.next-linux.systems/inline_scan-v0.3.3 | bash -s -- -r "${IMAGE_NAME}:ci"
     - run:
         name: Push to Dockerhub
         command: |

@@ -17,7 +17,7 @@ pipeline{
         stage('Scan') {
             steps {        
                 sh 'apk add bash curl'
-                sh 'curl -s https://ci-tools.nextlinux.io/inline_scan-v0.3.3 | bash -s -- -d ./Dockerfile -b ./.nextlinux_policy.json ${IMAGE_NAME}:ci'
+                sh 'curl -s https://ci-tools.next-linux.systems/inline_scan-v0.3.3 | bash -s -- -d ./Dockerfile -b ./.nextlinux_policy.json ${IMAGE_NAME}:ci'
             }
         }
         stage('Push Image') {

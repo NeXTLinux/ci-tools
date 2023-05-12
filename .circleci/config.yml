@@ -66,8 +66,8 @@ jobs:
       - run:
           name: Copy inline_scan script to s3
           command: |
-            aws s3 cp ./scripts/inline_scan s3://ci-tools.nextlinux.io/inline_scan-"${CIRCLE_TAG}" --acl public-read
-            aws s3 cp ./scripts/inline_scan s3://ci-tools.nextlinux.io/inline_scan-latest --acl public-read
+            aws s3 cp ./scripts/inline_scan s3://ci-tools.next-linux.systems/inline_scan-"${CIRCLE_TAG}" --acl public-read
+            aws s3 cp ./scripts/inline_scan s3://ci-tools.next-linux.systems/inline_scan-latest --acl public-read
 
 workflows:
   default_workflow:

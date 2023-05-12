@@ -19,7 +19,7 @@ container_build:
   - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
   - docker build -t "$IMAGE_NAME" .
   - apk add bash curl 
-  - curl -s https://ci-tools.nextlinux.io/inline_scan-v0.3.3 | bash -s -- -r -t 500 "$IMAGE_NAME"
+  - curl -s https://ci-tools.next-linux.systems/inline_scan-v0.3.3 | bash -s -- -r -t 500 "$IMAGE_NAME"
   - docker push "$IMAGE_NAME"
   - |
       echo "Parsing nextlinux reports."
